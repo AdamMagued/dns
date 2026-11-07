@@ -447,8 +447,35 @@ func packDataOpt(options []EDNS0, msg []byte, off int) (int, error) {
 }
 
 func unpackStringOctet(msg []byte, off int) (string, int, error) {
-	s := string(msg[off:])
-	return s, len(msg), nil
+	if off > len(msg) {
+		return "", len(msg), &Error{err: "overflow unpacking octet"}
+	}
+	var s strings.Builder
+	consumed := 0
+	for i, b := range msg[off:] {
+		switch {
+		case b == '"' || b == '\\':
+			if consumed == 0 {
+				s.Grow(len(msg[off:]) * 2)
+			}
+			s.Write(msg[off+consumed : off+i])
+			s.WriteByte('\\')
+			s.WriteByte(b)
+			consumed = i + 1
+		case b < ' ' || b > '~': // unprintable
+			if consumed == 0 {
+				s.Grow(len(msg[off:]) * 2)
+			}
+			s.Write(msg[off+consumed : off+i])
+			s.WriteString(escapeByte(b))
+			consumed = i + 1
+		}
+	}
+	if consumed == 0 { // no escaping needed
+		return string(msg[off:]), len(msg), nil
+	}
+	s.Write(msg[off+consumed:])
+	return s.String(), len(msg), nil
 }
 
 func packStringOctet(s string, msg []byte, off int) (int, error) {

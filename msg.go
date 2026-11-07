@@ -505,11 +505,11 @@ func packTxtString(s string, msg []byte, offset int) (int, error) {
 }
 
 func packOctetString(s string, msg []byte, offset int) (int, error) {
-	if offset >= len(msg) || len(s) > 256*4+1 {
+	if offset > len(msg) {
 		return offset, ErrBuf
 	}
 	for i := 0; i < len(s); i++ {
-		if len(msg) <= offset {
+		if offset >= len(msg) {
 			return offset, ErrBuf
 		}
 		if s[i] == '\\' {
